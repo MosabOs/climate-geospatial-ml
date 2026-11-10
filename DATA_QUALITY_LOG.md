@@ -296,7 +296,147 @@ validation must be considered before interpreting model performance.
 
 ------------------------------------------------------------------------
 
-## 8. Summary of Decisions and Pending Actions
+
+
+## 8. Spatial Validation
+
+### 8.1 Geographical grouping and split
+
+Spatial validation was performed in `notebooks/05_spatial_validation.ipynb`
+using `GroupShuffleSplit`.
+
+A geographical group was defined using the combination of `country` and
+`location_name`.
+
+After excluding the previously identified anomalous `79.3°C` observation
+from the modeling DataFrame, the dataset contained 170,927 observations
+and 286 geographical groups.
+
+| Item | Training | Testing |
+|---|---:|---:|
+| Geographical groups | 228 | 58 |
+| Observations | 139,590 | 31,337 |
+| Observation proportion | 81.67% | 18.33% |
+
+The number of overlapping geographical groups was zero.
+
+**Decision:** The group-based split was retained. The test observation
+proportion is not exactly 20% because `GroupShuffleSplit` applies the
+configured proportion to groups, not directly to individual rows.
+
+**Limitation:** The grouping key depends on the dataset's country and
+location labels. Previously identified naming inconsistencies may cause
+records referring to the same real-world location to be treated as
+different groups. Therefore, zero overlap confirms separation of the
+defined labels, not necessarily perfect separation of all real-world
+geographical sites.
+
+### 8.2 Features and model configuration
+
+The spatial experiment used the same eight features as the chronological
+baseline:
+
+- `latitude`
+- `longitude`
+- `month_sin`
+- `month_cos`
+- `hour_sin`
+- `hour_cos`
+- `day_sin`
+- `day_cos`
+
+The target remained `temperature_celsius`.
+
+The training and testing feature matrices contained 139,590 × 8 and
+31,337 × 8 observations respectively. No missing values were detected
+in either feature matrix.
+
+The Random Forest configuration was kept consistent with the baseline:
+100 estimators, `max_depth=None`, `min_samples_split=2`,
+`min_samples_leaf=2`, and `random_state=42`.
+
+### 8.3 Spatial model performance
+
+The spatial Random Forest was evaluated on 31,337 observations from
+58 geographically held-out groups.
+
+| Metric | Spatial validation result |
+|---|---:|
+| MAE | 3.7928°C |
+| RMSE | 5.4555°C |
+| R² | 0.6043 |
+| Mean residual (actual − predicted) | -0.6149°C |
+| Residual standard deviation | 5.4207°C |
+
+The model achieved an R² of 0.6043 on the spatial test set. Its residual
+mean was negative, indicating a small overall tendency to overpredict
+under the residual definition `actual - predicted`.
+
+The actual-versus-predicted plot showed regression toward the middle:
+lower temperatures tended to be overpredicted, while higher temperatures
+tended to be underpredicted. The residual distribution was concentrated
+around zero but had wider dispersion and tails than the chronological
+baseline residual distribution.
+
+### 8.4 Comparison with chronological baseline
+
+The chronological baseline results were loaded from
+`outputs/results/baseline_metrics.json`, while spatial results were saved
+to `outputs/results/spatial_metrics.json`.
+
+| Metric | Chronological baseline | Spatial validation |
+|---|---:|---:|
+| MAE | 3.0329°C | 3.7928°C |
+| RMSE | 4.1914°C | 5.4555°C |
+| R² | 0.6789 | 0.6043 |
+
+Relative to the chronological baseline, spatial validation showed:
+
+- MAE increased by approximately 25.1%.
+- RMSE increased by approximately 30.2%.
+- R² decreased by approximately 0.0746.
+
+**Interpretation:** Performance was weaker on the spatial test set than
+on the chronological test set. However, these experiments use different
+test populations and different split strategies. The difference cannot
+be attributed exclusively to geographical separation; differences in
+the composition and temperature distribution of the test sets may also
+contribute.
+
+### 8.5 Saved artifacts
+
+The spatial experiment produced the following artifacts:
+
+- Model: `models/random_forest_spatial.joblib`
+- Metrics: `outputs/results/spatial_metrics.json`
+
+The compressed model size was 131.46 MB. The saved model was reloaded
+successfully, and its predictions matched the original model's
+predictions within floating-point precision (maximum difference
+approximately `1.42e-14`).
+
+The spatial model and metrics are local artifacts. The `models/`
+directory remains excluded from Git tracking.
+
+### 8.6 Validation limitations and follow-up
+
+The current spatial validation is a single group-based holdout using
+58 test groups. It is useful as an initial test of geographical
+generalization, but it does not provide uncertainty estimates across
+multiple spatial splits.
+
+Potential follow-up work:
+
+- Review country and location naming inconsistencies before treating
+  the groups as verified real-world sites.
+- Consider repeated group-based splits or a spatial cross-validation
+  strategy to assess variability across held-out locations.
+- Inspect performance by held-out location or region, where sample
+  sizes allow meaningful interpretation.
+- Keep the chronological and spatial results clearly distinguished in
+  reports because their test populations differ.
+
+## 9. Summary of Decisions and Pending Actions
 
   -----------------------------------------------------------------------
   Issue                   Current decision        Follow-up
@@ -347,7 +487,7 @@ validation must be considered before interpreting model performance.
                                                   spatial validation.
   -----------------------------------------------------------------------
 
-## 9. Logging Policy
+## 10. Logging Policy
 
 This log should be updated whenever a new data quality issue is
 discovered or a cleaning decision is made.
