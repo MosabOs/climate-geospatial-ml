@@ -503,3 +503,212 @@ For every issue, record:
 Do not silently overwrite the original raw dataset. Keep cleaning
 operations reproducible and apply them to separate working or modeling
 DataFrames.
+
+
+## 11. Model Improvement and Final Evaluation
+
+### 11.1 Modeling Dataset and Feature Audit
+
+The model improvement experiments used the processed weather dataset
+containing 170,928 rows and 44 columns. One extreme temperature
+observation (`79.3°C`, Suva, Fiji) was excluded from the in-memory
+modeling DataFrame only. The raw and processed source files were not
+modified.
+
+The modeling dataset therefore contained 170,927 observations.
+
+The target was `temperature_celsius`. Directly derived temperature
+measurements, including `temperature_fahrenheit` and `feels_like_*`,
+were excluded to avoid target leakage.
+
+### 11.2 Feature Sets and Spatial Split
+
+The initial baseline feature set contained:
+
+- `latitude`
+- `longitude`
+- `month_sin`
+- `month_cos`
+- `hour_sin`
+- `hour_cos`
+- `day_sin`
+- `day_cos`
+
+Additional geographical transformations were tested, including
+latitude and longitude sine/cosine features. They did not improve the
+Random Forest results in the experiment.
+
+A GroupShuffleSplit was performed using the combined country and
+location labels:
+
+- Training observations: 139,590
+- Test observations: 31,337
+- Training groups: 228
+- Test groups: 58
+- Overlapping group labels: 0
+
+The grouping limitation described in Section 8.6 also applies here:
+separation is guaranteed at the label level, not necessarily at the
+level of verified physical sites.
+
+### 11.3 Model Comparison and Feature Selection
+
+Three models were compared using the same five GroupKFold splits and
+the same initial eight-feature set.
+
+Mean cross-validation results:
+
+| Model | MAE (°C) | RMSE (°C) | R² |
+|---|---:|---:|---:|
+| Random Forest | 3.4630 | 4.8736 | 0.7152 |
+| Extra Trees | 2.9152 | 4.0276 | 0.8119 |
+| HistGradientBoosting | 3.3558 | 4.5132 | 0.7626 |
+
+Extra Trees achieved the best mean cross-validation performance.
+
+Feature ablation indicated that removing the month features produced
+nearly identical performance while reducing the feature count from
+eight to six. The selected feature set was:
+
+- `latitude`
+- `longitude`
+- `hour_sin`
+- `hour_cos`
+- `day_sin`
+- `day_cos`
+
+Permutation importance identified latitude and day-of-year cosine
+as the strongest predictors in the evaluated folds. Feature importance
+indicates predictive dependence, not causality.
+
+### 11.4 Hyperparameter Optimization Decision
+
+A RandomizedSearchCV experiment evaluated 20 parameter combinations
+using five GroupKFold splits (100 fits).
+
+The best tuned candidate achieved a mean CV MAE of approximately
+2.9176°C. This did not improve on the six-feature Extra Trees baseline
+(mean CV MAE approximately 2.9169°C).
+
+The tuned candidate also required substantially more training time.
+Therefore, the original Extra Trees baseline configuration was
+retained rather than adopting the more complex tuned configuration.
+
+Retained configuration:
+
+- `n_estimators=100`
+- `max_depth=None`
+- `min_samples_split=2`
+- `min_samples_leaf=2`
+- `max_features=1.0`
+- `bootstrap=False`
+- `random_state=42`
+
+### 11.5 Final Model Evaluation
+
+The final Extra Trees model was trained on 139,590 observations using
+the six selected features. Training time was 1.51 seconds.
+
+Evaluation on the current spatially held-out test subset (31,337
+observations):
+
+| Metric | Result |
+|---|---:|
+| MAE | 3.4102°C |
+| RMSE | 5.1357°C |
+| R² | 0.6494 |
+
+The test subset had previously been examined during feature comparison
+and error analysis. It must therefore not be described as a completely
+untouched independent test set.
+
+Compared with the five-fold GroupKFold mean, test performance was
+weaker. This indicates that prediction difficulty varies across
+geographical locations and held-out groups.
+
+### 11.6 Residual and Location-Level Error Analysis
+
+Residuals were defined as:
+
+`residual = actual - predicted`
+
+Final test residual statistics:
+
+- Mean residual: -0.9400°C
+- Residual standard deviation: 5.0490°C
+- Minimum residual: -29.7453°C
+- Maximum residual: 16.6160°C
+
+The negative mean residual indicates an overall tendency toward
+overprediction on the test subset.
+
+The 15 largest absolute prediction errors were concentrated in
+Ottawa, Canada (5 observations), and Thimphu, Bhutan (10 observations).
+All 15 residuals were negative, indicating overprediction in these
+cases.
+
+Location-level error aggregation was restricted to locations with at
+least 100 test observations.
+
+Best-performing locations included:
+
+| Location | Observations | MAE (°C) |
+|---|---:|---:|
+| Saint John's, Antigua and Barbuda | 874 | 0.6502 |
+| Kingstown, Saint Vincent and the Grenadines | 875 | 0.6728 |
+| Tarawa, Kiribati | 876 | 0.7471 |
+| Paramaribo, Suriname | 875 | 0.7548 |
+
+Worst-performing locations included:
+
+| Location | Observations | MAE (°C) |
+|---|---:|---:|
+| Thimphu, Bhutan | 876 | 16.7489 |
+| Khartoum, Sudan | 876 | 8.5939 |
+| Addis Ababa, Ethiopia | 875 | 8.0851 |
+| Kathmandu, Nepal | 877 | 7.4141 |
+| Baghdad, Iraq | 879 | 6.8860 |
+| Ottawa, Canada | 876 | 6.4892 |
+
+The location-level results demonstrate substantial variation in
+predictive performance. Elevation, topography, and local climate are
+potential explanatory factors, but their effects were not tested in
+this experiment and should not be presented as confirmed causes.
+
+### 11.7 Saved Final Artifacts
+
+The following artifacts were generated:
+
+- Final model: `models/extra_trees_final.joblib`
+- Final metrics: `outputs/results/final_model_metrics.json`
+- Baseline metrics: `outputs/results/baseline_metrics.json`
+- Spatial metrics: `outputs/results/spatial_metrics.json`
+
+The final model file size was approximately 183.98 MB. The saved model
+was reloaded successfully, and its predictions matched the original
+in-memory model exactly on the test data (maximum difference: 0).
+
+The following figures were present in `outputs/figures/`:
+
+- `actual_vs_predicted.png`
+- `geographical_distribution.png`
+- `locations_per_country.png`
+- `residual_distribution.png`
+
+Model and result artifacts remain excluded from Git tracking according
+to the project's `.gitignore` configuration.
+
+### 11.8 Remaining Methodological Limitations and Follow-up
+
+- The current test subset was used during model development; a new
+  untouched geographical test set is needed for a stronger final
+  independent evaluation.
+- Repeated spatial splits or nested spatial cross-validation could
+  provide a more robust estimate of generalization variability.
+- Group labels inherit inconsistencies in the source country and
+  location names.
+- Elevation, topography, and climate-zone features have not yet been
+  integrated or experimentally evaluated.
+- The project estimates temperature from location and time features;
+  it does not forecast future weather.
+
