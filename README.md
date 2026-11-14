@@ -346,4 +346,4 @@ Execute the notebooks in numerical order, beginning with dataset understanding.
 
 ## 14. Author
 
-**Mosab Osman**
+**Mosab Osama**
