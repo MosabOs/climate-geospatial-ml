@@ -1,6 +1,6 @@
 # Climate & Geospatial ML
 
-**Spatial Temperature Estimation Using Machine Learning**
+### Spatial Temperature Estimation Using Machine Learning
 
 ## 1. Project Overview
 
@@ -33,7 +33,7 @@ This project investigates:
 
 **Dataset:** World Weather Repository
 
-**Source:** [Kaggle - Global Weather Repository](https://www.kaggle.com/datasets/nelgiriyewithana/global-weather-repository)
+**Source:** [Global Weather Repository – Kaggle](https://www.kaggle.com/datasets/nelgiriyewithana/global-weather-repository)
 
 The original dataset contains:
 
@@ -201,14 +201,17 @@ Climate_Geospatial_ML/
 │   └── 06_model_improvement.ipynb
 │
 ├── src/
+│   ├── __init__.py
 │   ├── data_loader.py
-│   ├── preprocessing.py
 │   ├── feature_engineering.py
-│   ├── visualization.py
+│   ├── preprocessing.py
+│   ├── prediction.py
 │   ├── train.py
-│   └── evaluation.py
+│   ├── evaluation.py
+│   └── visualization.py
 │
 ├── models/
+│
 ├── outputs/
 │   ├── figures/
 │   └── results/
@@ -216,9 +219,12 @@ Climate_Geospatial_ML/
 ├── config.py
 ├── main.py
 ├── requirements.txt
+├── .gitignore
 ├── DATA_QUALITY_LOG.md
 └── README.md
 ```
+
+**Note:** The raw dataset, processed data, and trained model files are not stored directly in the Git repository. The trained final model is distributed through GitHub Releases.
 
 ## 11. Technologies and Libraries
 
@@ -259,12 +265,54 @@ Activate it on Windows:
 python -m pip install -r requirements.txt
 ```
 
+### Download the Trained Model
+
+The trained Extra Trees model is distributed separately through GitHub Releases because of its file size.
+
+**Model Release:** [Initial Model Release - Extra Trees (v1.0.0)](https://github.com/MosabOs/climate-geospatial-ml/releases/tag/v1.0.0)
+
+Download the model directly:
+
+[Download extra_trees_final.joblib](https://github.com/MosabOs/climate-geospatial-ml/releases/download/v1.0.0/extra_trees_final.joblib)
+
+Place the downloaded file inside the project's models directory:
+
+```text
+models/
+└── extra_trees_final.joblib
+```
+
+Make sure the filename and directory match the configuration in `config.py`.
+
 ### Prepare the Dataset
 
-Download the Global Weather Repository dataset from Kaggle and place the original CSV file in:
+To reproduce the experiments and run the notebooks, download the Global Weather Repository dataset from Kaggle and place the original CSV file in:
 
 ```text
 data/raw/GlobalWeatherRepository.csv
+```
+
+The dataset is not included in the Git repository.
+
+**Note:** The prediction application uses the pretrained model and does not require the raw dataset to be present.
+
+### Run the Prediction Application
+
+After installing the dependencies and downloading the trained model, run:
+
+```bash
+python main.py
+```
+
+Enter the geographical coordinates, date, and hour when prompted.
+
+Example inputs:
+
+```text
+Enter latitude: 24.7136
+Enter longitude: 46.6753
+Enter date (YYYY-MM-DD): 2026-11-13
+Enter hour (0-23): 14
 ```
 
 ### Run the Notebooks
@@ -279,7 +327,7 @@ Execute the notebooks in numerical order, beginning with dataset understanding.
 
 ## 13. Limitations and Future Improvements
 
-Current limitations:
+### Current Limitations
 
 - Geographical coverage is uneven across locations.
 - Country and location naming inconsistencies may affect geographical grouping.
@@ -287,7 +335,7 @@ Current limitations:
 - Model performance varies significantly across geographical locations.
 - The final held-out test subset was used during development and is not completely untouched.
 
-Potential future improvements:
+### Potential Future Improvements
 
 - Integrating elevation and topographical datasets.
 - Incorporating climate zone information.
@@ -299,7 +347,3 @@ Potential future improvements:
 ## 14. Author
 
 **Mosab Osman**
-
-
-GitHub: [MosabOs](https://github.com/MosabOs)
-

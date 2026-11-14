@@ -23,6 +23,9 @@ PROCESSED_DATA_PATH = (
     PROCESSED_DATA_DIR / "weather_spatial_features.csv"
 )
 
+
+FINAL_MODEL_PATH = MODELS_DIR / "extra_trees_final.joblib"
+
 # Model Configuration
 
 RANDOM_STATE = 42
